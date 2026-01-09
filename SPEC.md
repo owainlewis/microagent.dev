@@ -1,104 +1,139 @@
 # Micro Agent Specification
 
-**Version**: 1.0.0
+**Version**: 1.0.0  
 **License**: CC0 1.0 (Public Domain)
 
 ---
 
-## The Idea
+## Two Files. That's It.
 
-A Micro Agent is a folder where the files ARE the agent.
+A Micro Agent is a folder with two things:
 
-- `AGENT.md` defines who the agent is and what it can do
-- `tools/` contains scripts it can run
-- `context/` contains knowledge it can read
-- `workspace/` is where it saves files
+1. **AGENT.md** — Instructions for the agent
+2. **tools/** — Scripts it can run
 
-Point any terminal agent at the folder. The docs are the source of truth.
+```
+my-agent/
+├── AGENT.md      # "You are X. You can use these tools..."
+└── tools/        # Any executable
+```
+
+Point a terminal agent at the folder. Done.
+
+No framework. No config. No orchestration layer. The markdown is the agent definition. The scripts are the capabilities.
+
+---
+
+## Any Executable Is a Tool
+
+This is the core idea. If it runs from a terminal, it's a tool.
+
+### Python
+
+```bash
+python tools/analyze.py --input data.csv
+```
+
+### Bash
+
+```bash
+bash tools/deploy.sh production
+```
+
+### Node
+
+```bash
+node tools/scrape.js https://example.com
+```
+
+### Go, Rust, Any Binary
+
+```bash
+./tools/crawler --url https://example.com --depth 3
+```
+
+### Docker
+
+```bash
+docker run --rm -v $(pwd):/data myimage:latest /data/input.csv
+```
+
+### Existing CLIs You Already Have
+
+```bash
+ffmpeg -i input.mp4 -vf scale=1280:720 output.mp4
+```
+
+```bash
+yt-dlp --extract-audio "https://youtube.com/watch?v=xxx"
+```
+
+```bash
+curl -s "https://api.example.com/data" | jq '.items'
+```
+
+```bash
+rg "TODO" --type py
+```
+
+```bash
+gh issue list --repo owner/repo --json title,url
+```
+
+### The Pattern
+
+If it:
+- Accepts arguments
+- Outputs to stdout
+- Returns an exit code
+
+It's a tool. No wrappers. No schemas. No function registration. Just executables.
+
+50 years of Unix tools work out of the box.
 
 ---
 
 ## Why This Works
 
-### Zero Context Drift
+**Zero context drift.** Long conversations degrade. Files don't. The agent reads `AGENT.md` fresh every time.
 
-Long conversations degrade. The model forgets early instructions. Context windows fill up.
+**Swap models instantly.** Claude today, GPT tomorrow, Ollama next week. The folder works with any agent that can read files and run commands.
 
-Files don't drift. The agent reads `AGENT.md` fresh every time. The state is in the filesystem, not hidden in conversation history.
+**Debug in English.** When it breaks, read the markdown. Fix the instructions. No stack traces.
 
-### Tool Agnostic
-
-Switch models instantly. Claude today, GPT tomorrow, local LLM next week.
-
-You don't rewrite code to change providers. You paste the folder into a different agent. The files work everywhere.
-
-### Debuggable in English
-
-When it fails, you don't debug stack traces. You read text files.
-
-The plan is visible. The state is visible. Fix it in English and try again.
-
-### Async by Default
-
-Stop for a week. Come back. The `workspace/` contains exactly where you left off.
-
-The files ARE the state. Nothing to reconstruct.
+**Async by default.** Stop for a week. The workspace is exactly where you left off.
 
 ---
 
-## Why Scripts
+## Full Structure
 
-Scripts are the most powerful tool interface for agents:
-
-- **Any language** — Python, Bash, Node. Whatever works.
-- **Any API** — If you can curl it, you can script it.
-- **Composable** — Pipe tools together. Chain operations.
-- **Debuggable** — Run it yourself. See what the agent sees.
-- **No protocol** — No schemas, no servers. Just stdin/stdout.
-
-```bash
-# This is a tool:
-python tools/get_analytics.py --channel-id UC123
-
-# So is this:
-curl -s "https://api.example.com/data" | jq '.items'
-```
-
-An agent that can run scripts can do anything you can do from a terminal.
-
----
-
-## The Tradeoffs
-
-**Manual overhead** — You trigger the agent. You review before it acts. It's not fully autonomous.
-
-**Latency** — Read-plan-act is slower than stream-of-consciousness chat.
-
-For personal productivity, these aren't downsides. You want to be in the loop. You want to review. The "overhead" is actually control.
-
----
-
-## Specification
-
-### Folder Structure
+The minimum is `AGENT.md` + `tools/`. For real work, add context and workspace:
 
 ```
 agent-name/
 ├── AGENT.md          # Required: Identity and instructions
-├── tools/            # Required: Scripts the agent runs
-├── context/          # Optional: Reference docs, SOPs
-├── workspace/        # Optional: Where files go
-└── .env.example      # If credentials needed
+├── tools/            # Required: Executables
+├── context/          # Optional: SOPs, guides, templates
+├── workspace/        # Optional: Agent's working files
+└── .env.example      # Optional: Credentials template
 ```
 
-### AGENT.md
+| Directory | Purpose | Agent Access |
+|-----------|---------|--------------|
+| `tools/` | Scripts and executables | Run |
+| `context/` | Reference docs, SOPs | Read |
+| `workspace/` | Files the agent creates | Read/Write |
+
+---
+
+## AGENT.md Format
 
 Plain markdown. Follows [AGENTS.md](https://agents.md) conventions.
 
 ```markdown
 # Agent Name
 
-You are a [role]. You help [what you do].
+You are a [role]. You help [do what].
 
 You can use the following tools:
 
@@ -106,23 +141,23 @@ You can use the following tools:
 
 ### tool_name
 
-Description.
+What it does.
 
-    command --with arguments
+    command --with args
 
 ## Workspace
 
 Save files to `workspace/`:
 
-- `workspace/projects/` — What goes here
-- `workspace/research/` — What goes here
+- `workspace/output/` — Generated files
+- `workspace/data/` — Downloaded data
 
 ## Workflows
 
 ### Task Name
 
 1. Read `context/guide.md`
-2. Run tool
+2. Run `tool_name`
 3. Save to `workspace/`
 
 ## Environment
@@ -130,56 +165,41 @@ Save files to `workspace/`:
     export API_KEY=your_key
 ```
 
-### Context
+---
 
-Reference material the agent reads before doing work:
+## Tool Conventions
 
-- Style guides
-- SOPs
-- Templates
-- Examples
+Tools don't need to follow any protocol. But good tools:
 
-The agent reads these. It doesn't modify them.
+- Accept `--help` for self-documentation
+- Output JSON with `--json` flag when useful
+- Write errors to stderr
+- Return non-zero on failure
 
-### Workspace
-
-Where the agent saves files:
-
-- Downloads
-- Generated content
-- Research notes
-- Project files
-
-This is the agent's working state. Persistent across sessions.
-
-### Workflows
-
-Step-by-step procedures. What context to read, what tools to run, where to save output.
-
-Without workflows, agents skip steps. With workflows, procedures are repeatable.
+That's it. No schemas. No registration. Just good CLI hygiene.
 
 ---
 
 ## Compatible Agents
 
-Any terminal agent that can read files and run commands:
+Any terminal agent that reads files and runs commands:
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - [Goose](https://github.com/block/goose)
-- [OpenCode](https://opencode.ai)
 - [Codex CLI](https://github.com/openai/codex)
 - [Aider](https://aider.chat)
+- [OpenCode](https://opencode.ai)
 
-Or paste into any chat interface. The files are the agent.
+Or any chat with code execution. The folder is portable.
 
 ---
 
-## Example
+## Example: YouTube Agent
 
 ```markdown
 # YouTube Agent
 
-You are a YouTube research agent. You help analyze channels, find content patterns, and write scripts.
+You are a YouTube research agent. You analyze channels and write scripts.
 
 You can use the following tools:
 
@@ -203,6 +223,12 @@ Get video transcript.
 
     uv run tools/youtube.py get_transcript VIDEO_ID
 
+### download_audio
+
+Download audio from a video.
+
+    yt-dlp -x --audio-format mp3 "https://youtube.com/watch?v=VIDEO_ID"
+
 ## Workspace
 
 - `workspace/projects/` — Video projects
@@ -214,15 +240,14 @@ Get video transcript.
 ### Research a Topic
 
 1. Search with `search_videos`
-2. Analyze channels with `get_channel_videos`
-3. Get transcripts of outliers
+2. Find outliers with `get_channel_videos`
+3. Get transcripts of top performers
 4. Save to `workspace/research/`
 
 ### Write a Script
 
 1. Read `context/script-guide.md`
-2. Create `workspace/projects/<n>/`
-3. Write script.md
+2. Write to `workspace/projects/<n>/script.md`
 
 ## Environment
 
@@ -231,17 +256,23 @@ Get video transcript.
 
 ---
 
+## The Tradeoffs
+
+**Manual overhead.** You trigger the agent. You review output. Not fully autonomous.
+
+**Latency.** Read-plan-act is slower than stream-of-consciousness.
+
+For personal use, these are features. You stay in the loop. The overhead is control.
+
+---
+
 ## Summary
 
-The agent harness is general-purpose.
+Two files minimum:
 
-The value is in the files:
+- **AGENT.md** — Who the agent is, what tools it has
+- **tools/** — Any executable
 
-- **AGENT.md** — Identity and instructions
-- **tools/** — Scripts that do things
-- **context/** — Knowledge to read
-- **workspace/** — State that persists
+Any terminal agent can run it. Any model can power it. Any script can be a tool.
 
-Docs are the source of truth. Files don't drift. Debug in English. Pick up where you left off.
-
-That's it.
+The harness is general. The value is in the folder.
