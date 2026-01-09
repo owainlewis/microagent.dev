@@ -5,38 +5,91 @@
 
 ---
 
-## Introduction
+## The Problem
 
-A **Micro Agent** is a portable workspace that any AI agent can operate from. It's a folder containing everything an agent needs: identity, tools, context, and a workspace for files.
+You want to build an AI agent that manages your YouTube channel. Your options:
 
-The format follows the [AGENTS.md](https://agents.md) standard — plain markdown instructions that any coding agent can read. The key addition: tools, workspace, and workflows to make it a complete operational environment.
+1. **n8n / Zapier** — Visual workflow builders. No chat interface. Limited reasoning.
+2. **LangChain / CrewAI** — Frameworks. Weeks of plumbing before you touch agent logic.
+3. **Custom FastAPI + React** — Build everything from scratch. Months of work.
 
----
-
-## Quick Start
-
-```
-my-agent/
-├── AGENT.md              # "You are... You can use these tools..."
-├── tools/                # Scripts the agent can run
-├── context/              # Reference docs (SOPs, guides, templates)
-├── workspace/            # Files the agent creates
-└── .env.example          # Credentials template
-```
-
-Point any AI agent at the folder:
-
-```
-Read AGENT.md. You are this agent. This folder is your workspace.
-```
-
-That's it.
+All of these separate you from the actual value: **the scripts that do things** and **the context that makes the agent useful**.
 
 ---
 
-## AGENT.md Format
+## The Insight
 
-Plain markdown. No frontmatter required. Follows AGENTS.md conventions.
+Terminal agents like Claude Code, Goose, OpenCode, and Codex already know how to:
+
+- Read files
+- Execute scripts
+- Write output
+- Have conversations
+
+They're general-purpose agent harnesses. You don't need to build another one.
+
+**What they lack is your specific context and tools.**
+
+---
+
+## The Solution
+
+A Micro Agent is a folder:
+
+```
+youtube-agent/
+├── AGENT.md          # "You are... You can use these tools..."
+├── tools/            # Scripts that do things
+├── context/          # SOPs, guides, templates
+└── workspace/        # Where the agent saves files
+```
+
+Point any terminal agent at it:
+
+```
+Read AGENT.md. You are this agent. Help me with my YouTube channel.
+```
+
+The harness is general. The value is the folder.
+
+---
+
+## Why Scripts and CLIs
+
+Scripts are the most powerful tool interface for agents:
+
+**Any language** — Python, Bash, Node, Go. Whatever solves the problem.
+
+**Any API** — If you can curl it, you can script it.
+
+**Battle-tested** — Unix tools have 50 years of refinement. `jq`, `grep`, `ffmpeg` just work.
+
+**Composable** — Pipe output between tools. Chain operations.
+
+**Debuggable** — Run the script yourself. See what the agent sees.
+
+**No protocol overhead** — No schemas, no servers, no adapters. Just stdin/stdout.
+
+```bash
+# This is a tool:
+python tools/get_analytics.py --channel-id UC123 --days 30
+
+# So is this:
+curl -s "https://api.youtube.com/..." | jq '.items'
+
+# And this:
+ffmpeg -i input.mp4 -vf scale=1280:720 output.mp4
+```
+
+An agent that can run scripts can do anything you can do from a terminal.
+
+---
+
+## Specification
+
+### AGENT.md
+
+Plain markdown. Follows [AGENTS.md](https://agents.md) conventions.
 
 ```markdown
 # Agent Name
@@ -49,23 +102,24 @@ You can use the following tools:
 
 ### tool_name
 
-Description of what it does.
+Description.
 
-    command to run the tool --with arguments
+    command --with arguments
 
 ## Workspace
 
 Save files to `workspace/`:
 
-- `workspace/folder/` — What goes here
+- `workspace/projects/` — What goes here
+- `workspace/research/` — What goes here
 
 ## Workflows
 
-### Common Task Name
+### Task Name
 
-1. Read `context/relevant-guide.md`
-2. Do something
-3. Save to `workspace/output/`
+1. Read `context/guide.md`
+2. Run tool
+3. Save output to `workspace/`
 
 ## Environment
 
@@ -74,388 +128,172 @@ Required:
     export API_KEY=your_key
 ```
 
-### Key Sections
-
-| Section | Purpose |
-|---------|---------|
-| **Header** | "You are... You help..." — Agent identity |
-| **Tools** | Scripts the agent can execute |
-| **Workspace** | Where to save files |
-| **Workflows** | Step-by-step procedures for common tasks |
-| **Environment** | Required credentials |
-
----
-
-## Folder Structure
+### Folder Structure
 
 ```
 agent-name/
-├── AGENT.md              # Required: Agent instructions
-├── tools/                # Required: Executable scripts
-│   ├── main.py           # Main tool script
-│   └── auth/             # Auth helpers (optional)
-│       └── setup.py
-├── context/              # Optional: Reference documents
-│   ├── guide.md
-│   └── templates/
-├── workspace/            # Auto-created: Agent's working files
-│   ├── projects/
-│   ├── research/
-│   └── output/
-├── .env.example          # Required if auth needed
-└── README.md             # Optional: Human documentation
+├── AGENT.md              # Required
+├── tools/                # Required
+├── context/              # Optional: reference docs
+├── workspace/            # Agent's working directory
+└── .env.example          # If credentials needed
 ```
 
-### Directory Purposes
+### That's It
+
+No frontmatter. No config files. No schemas.
+
+Just markdown and scripts.
+
+---
+
+## Compatible Harnesses
+
+Any terminal agent that can read files and run commands:
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [OpenCode](https://opencode.ai)
+- [Goose](https://github.com/block/goose)
+- [Codex CLI](https://github.com/openai/codex)
+- [Aider](https://aider.chat)
+- [Claude](https://claude.ai) with computer use
+
+The harness handles conversation, tool execution, and reasoning.
+
+The Micro Agent provides context, tools, and workspace.
+
+---
+
+## Context vs Tools vs Workspace
 
 | Directory | Purpose | Agent Access |
 |-----------|---------|--------------|
-| `tools/` | Executable scripts | Execute |
-| `context/` | Reference docs, SOPs, templates | Read |
-| `workspace/` | Agent's working files | Read/Write |
+| `tools/` | Scripts that do things | Execute |
+| `context/` | SOPs, guides, templates | Read |
+| `workspace/` | Files the agent creates | Read/Write |
+
+**Context** is reference material. The agent reads it before doing work.
+
+**Tools** are capabilities. The agent executes them to take action.
+
+**Workspace** is the agent's desk. Downloads, drafts, output go here.
 
 ---
 
-## Tools
+## Workflows
 
-Tools are scripts in the `tools/` directory. Any language works as long as:
-
-1. It can be run from command line
-2. It accepts arguments
-3. It outputs to stdout
-4. It returns exit codes (0 = success)
-
-### Documenting Tools in AGENT.md
-
-```markdown
-### Tool Name
-
-Brief description of what it does and when to use it.
-
-    command to run --required-arg VALUE --optional-arg VALUE
-
-Options:
-- `--required-arg` — What this does (required)
-- `--optional-arg` — What this does (default: value)
-```
-
-### Tool Conventions
-
-Tools should:
-
-- Support `--help` for self-documentation
-- Output JSON with `--json` flag when structured data is useful
-- Write errors to stderr
-- Return non-zero exit codes on failure
-
-Example tool structure:
-
-```python
-#!/usr/bin/env python3
-"""Brief description."""
-
-import argparse
-import json
-import os
-import sys
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--channel', required=True, help='Channel to analyze')
-    parser.add_argument('--json', action='store_true', help='Output JSON')
-    args = parser.parse_args()
-    
-    api_key = os.environ.get('API_KEY')
-    if not api_key:
-        print("Error: API_KEY not set", file=sys.stderr)
-        sys.exit(1)
-    
-    result = do_work(args.channel)
-    
-    if args.json:
-        print(json.dumps(result, indent=2))
-    else:
-        print(format_result(result))
-
-if __name__ == '__main__':
-    main()
-```
-
----
-
-## Context
-
-The `context/` directory contains reference material the agent reads before doing work:
-
-- Style guides
-- SOPs and procedures
-- Templates
-- Examples
-- Domain knowledge
-
-Context files are read-only reference material. The agent reads them but doesn't modify them.
-
-### Organizing Context
-
-```
-context/
-├── script-guide.md       # How to write scripts
-├── style-guide.md        # Voice and tone
-├── templates/
-│   └── metadata.md       # Template for video metadata
-└── examples/
-    ├── good-script.md
-    └── good-title.md
-```
-
-### Referencing Context in Workflows
+Workflows are step-by-step procedures. They tell the agent what context to read, what tools to use, and where to save output.
 
 ```markdown
 ## Workflows
 
 ### Write a Script
 
-1. Read `context/script-guide.md` for structure
-2. Read `context/examples/good-script.md` for reference
-3. Write script to `workspace/projects/<name>/script.md`
+1. Read `context/script-guide.md`
+2. Read `context/examples/`
+3. Write to `workspace/projects/<name>/script.md`
 ```
+
+Without workflows, agents skip steps. With workflows, procedures are repeatable.
 
 ---
 
-## Workspace
-
-The `workspace/` directory is where the agent saves files it creates:
-
-- Downloads
-- Generated content
-- Research notes
-- Project files
-
-### Organizing Workspace
+## Example
 
 ```markdown
+# YouTube Agent
+
+You are a YouTube research agent. You help analyze channels, find content patterns, and write video scripts.
+
+You can use the following tools:
+
+## Tools
+
+### search_videos
+
+Search YouTube for videos.
+
+    uv run tools/youtube.py search_videos "QUERY" --max 25 --json
+
+### get_channel_videos
+
+Get videos from a channel with outlier analysis.
+
+    uv run tools/youtube.py get_channel_videos @HANDLE --days 30 --json
+
+### get_transcript
+
+Get video transcript.
+
+    uv run tools/youtube.py get_transcript VIDEO_ID
+
 ## Workspace
 
 Save files to `workspace/`:
 
-- `workspace/projects/` — Project folders (scripts, notes, metadata)
-- `workspace/research/` — Research and analysis
-- `workspace/downloads/` — Downloaded files
-- `workspace/output/` — Final deliverables
-```
-
-### Workspace in .gitignore
-
-```gitignore
-workspace/*
-!workspace/.gitkeep
-```
-
----
+- `workspace/projects/` — Video projects
+- `workspace/research/` — Analysis and notes
+- `workspace/transcripts/` — Downloaded transcripts
 
 ## Workflows
 
-Workflows are step-by-step procedures for common tasks. They tell the agent:
+### Research a Topic
 
-1. What context to read first
-2. What tools to use
-3. Where to save output
+1. Search with `search_videos`
+2. Get transcripts of top performers
+3. Save findings to `workspace/research/`
 
-### Writing Workflows
+### Write a Script
 
-```markdown
-## Workflows
+1. Read `context/script-guide.md`
+2. Read `context/title-guide.md`
+3. Write to `workspace/projects/<name>/script.md`
 
-### Task Name
-
-1. Read `context/relevant-guide.md`
-2. Run `tool_name` with appropriate arguments
-3. Save result to `workspace/folder/filename.md`
-
-### Another Task
-
-1. First step
-2. Second step
-3. Third step
-```
-
-### Why Workflows Matter
-
-Without workflows, the agent might:
-- Skip reading the style guide before writing
-- Save files to wrong locations
-- Miss important steps
-
-Workflows make procedures explicit and repeatable.
-
----
-
-## Authentication
-
-### .env.example
-
-Template for required credentials:
-
-```bash
-# API Credentials
-# Get from: https://example.com/api
-API_KEY=
-
-# OAuth (run tools/auth/setup.py to generate)
-CLIENT_SECRET=
-REFRESH_TOKEN=
-```
-
-### Auth Setup Scripts
-
-For complex auth (OAuth), include setup helpers:
-
-```
-tools/auth/
-├── setup.py          # Interactive first-time setup
-└── README.md         # Auth instructions
-```
-
-### Documenting in AGENT.md
-
-```markdown
 ## Environment
 
-Required:
-
-    export API_KEY=your_api_key
-    export CLIENT_SECRETS=/path/to/secrets.json
-
-Run `python tools/auth/setup.py` for first-time OAuth setup.
-```
-
----
-
-## Compatibility
-
-A Micro Agent works with any system that can:
-
-1. Read markdown files
-2. Execute shell commands
-3. Read environment variables
-
-### Compatible Harnesses
-
-- Claude (claude.ai, Claude Code)
-- Cursor
-- Windsurf
-- OpenAI Codex
-- GPT + Code Interpreter
-- Local LLMs with shell access
-- Custom harnesses
-
-### Usage
-
-```
-Open this folder. Read AGENT.md — you are this agent.
-Use the tools described there to help me.
+    export YOUTUBE_API_KEY=your_key
 ```
 
 ---
 
 ## Distribution
 
-### As Git Repository
+Share as a git repo:
 
 ```bash
-git clone https://github.com/user/my-agent
-cd my-agent
+git clone https://github.com/user/youtube-agent
+cd youtube-agent
 cp .env.example .env
-# Add credentials to .env
+# Add credentials, start working
 ```
 
-### .gitignore
-
-```gitignore
-.env
-workspace/*
-!workspace/.gitkeep
-__pycache__/
-*.pyc
-```
+Agents are portable. Same folder works with any compatible harness.
 
 ---
 
 ## Relationship to AGENTS.md
 
-This spec is compatible with [AGENTS.md](https://agents.md) — the open format for guiding coding agents.
+[AGENTS.md](https://agents.md) is the standard for giving coding agents instructions. Micro Agents follow the same format.
 
-**AGENTS.md**: Instructions for agents working in a codebase (build commands, code style, testing).
+**AGENTS.md**: Instructions for working in a codebase.
 
-**Micro Agent**: A complete workspace with tools, context, and workflows. Uses AGENTS.md conventions for the instruction format.
+**Micro Agent**: A complete workspace with tools, context, and workflows.
 
-A Micro Agent is what you get when AGENTS.md meets a self-contained operational workspace.
-
----
-
-## Relationship to Agent Skills
-
-[Agent Skills](https://agentskills.io) are capability packages — instructions and scripts that extend an agent.
-
-**Agent Skills**: Stateless plugins activated on demand.
-
-**Micro Agent**: Complete workspace with persistent state.
-
-Skills can live inside a Micro Agent's `context/` or as separate capability modules.
+A Micro Agent is what you get when AGENTS.md becomes a standalone operational environment.
 
 ---
 
-## Example Structure
+## Summary
 
-```
-youtube-agent/
-├── AGENT.md
-├── tools/
-│   ├── youtube.py
-│   └── auth/
-│       ├── setup.py
-│       └── README.md
-├── context/
-│   ├── script-guide.md
-│   ├── title-guide.md
-│   └── templates/
-│       └── metadata.md
-├── workspace/
-│   ├── projects/
-│   ├── research/
-│   └── transcripts/
-├── .env.example
-├── .gitignore
-└── README.md
-```
+The agent harness is general-purpose.
 
----
+The value is in the scripts (what it can do) and context (how it does it).
 
-## Checklist
+A Micro Agent is just a folder with:
 
-Minimum viable Micro Agent:
+- `AGENT.md` — Identity and instructions
+- `tools/` — Scripts that do things
+- `context/` — Reference material
+- `workspace/` — Where files go
 
-- [ ] `AGENT.md` with "You are..." and tools section
-- [ ] `tools/` with at least one executable script
-- [ ] `.env.example` if credentials needed
-
-Complete Micro Agent:
-
-- [ ] `AGENT.md` with tools, workspace, workflows
-- [ ] `tools/` with documented scripts
-- [ ] `context/` with guides and templates
-- [ ] `workspace/` directory structure
-- [ ] `.env.example` with all required credentials
-- [ ] `README.md` for human setup instructions
-
----
-
-## License
-
-This specification is released under **CC0 1.0 Universal (Public Domain)**.
-
----
-
-## Contributing
-
-GitHub: [github.com/microagent/spec](https://github.com/microagent/spec)
+Point a terminal agent at it. Start working.
