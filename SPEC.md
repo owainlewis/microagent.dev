@@ -5,87 +5,91 @@
 
 ---
 
-## The Problem
+## The Idea
 
-You want to build an AI agent that manages your YouTube channel. Your options:
+A Micro Agent is a folder where the files ARE the agent.
 
-1. **n8n / Zapier** — Visual workflow builders. No chat interface. Limited reasoning.
-2. **LangChain / CrewAI** — Frameworks. Weeks of plumbing before you touch agent logic.
-3. **Custom FastAPI + React** — Build everything from scratch. Months of work.
+- `AGENT.md` defines who the agent is and what it can do
+- `tools/` contains scripts it can run
+- `context/` contains knowledge it can read
+- `workspace/` is where it saves files
 
-All of these separate you from the actual value: **the scripts that do things** and **the context that makes the agent useful**.
-
----
-
-## The Insight
-
-Terminal agents like Claude Code, Goose, OpenCode, and Codex already know how to:
-
-- Read files
-- Execute scripts
-- Write output
-- Have conversations
-
-They're general-purpose agent harnesses. You don't need to build another one.
-
-**What they lack is your specific context and tools.**
+Point any terminal agent at the folder. The docs are the source of truth.
 
 ---
 
-## The Solution
+## Why This Works
 
-A Micro Agent is a folder:
+### Zero Context Drift
 
-```
-youtube-agent/
-├── AGENT.md          # "You are... You can use these tools..."
-├── tools/            # Scripts that do things
-├── context/          # SOPs, guides, templates
-└── workspace/        # Where the agent saves files
-```
+Long conversations degrade. The model forgets early instructions. Context windows fill up.
 
-Point any terminal agent at it:
+Files don't drift. The agent reads `AGENT.md` fresh every time. The state is in the filesystem, not hidden in conversation history.
 
-```
-Read AGENT.md. You are this agent. Help me with my YouTube channel.
-```
+### Tool Agnostic
 
-The harness is general. The value is the folder.
+Switch models instantly. Claude today, GPT tomorrow, local LLM next week.
+
+You don't rewrite code to change providers. You paste the folder into a different agent. The files work everywhere.
+
+### Debuggable in English
+
+When it fails, you don't debug stack traces. You read text files.
+
+The plan is visible. The state is visible. Fix it in English and try again.
+
+### Async by Default
+
+Stop for a week. Come back. The `workspace/` contains exactly where you left off.
+
+The files ARE the state. Nothing to reconstruct.
 
 ---
 
-## Why Scripts and CLIs
+## Why Scripts
 
 Scripts are the most powerful tool interface for agents:
 
-**Any language** — Python, Bash, Node, Go. Whatever solves the problem.
-
-**Any API** — If you can curl it, you can script it.
-
-**Battle-tested** — Unix tools have 50 years of refinement. `jq`, `grep`, `ffmpeg` just work.
-
-**Composable** — Pipe output between tools. Chain operations.
-
-**Debuggable** — Run the script yourself. See what the agent sees.
-
-**No protocol overhead** — No schemas, no servers, no adapters. Just stdin/stdout.
+- **Any language** — Python, Bash, Node. Whatever works.
+- **Any API** — If you can curl it, you can script it.
+- **Composable** — Pipe tools together. Chain operations.
+- **Debuggable** — Run it yourself. See what the agent sees.
+- **No protocol** — No schemas, no servers. Just stdin/stdout.
 
 ```bash
 # This is a tool:
-python tools/get_analytics.py --channel-id UC123 --days 30
+python tools/get_analytics.py --channel-id UC123
 
 # So is this:
-curl -s "https://api.youtube.com/..." | jq '.items'
-
-# And this:
-ffmpeg -i input.mp4 -vf scale=1280:720 output.mp4
+curl -s "https://api.example.com/data" | jq '.items'
 ```
 
 An agent that can run scripts can do anything you can do from a terminal.
 
 ---
 
+## The Tradeoffs
+
+**Manual overhead** — You trigger the agent. You review before it acts. It's not fully autonomous.
+
+**Latency** — Read-plan-act is slower than stream-of-consciousness chat.
+
+For personal productivity, these aren't downsides. You want to be in the loop. You want to review. The "overhead" is actually control.
+
+---
+
 ## Specification
+
+### Folder Structure
+
+```
+agent-name/
+├── AGENT.md          # Required: Identity and instructions
+├── tools/            # Required: Scripts the agent runs
+├── context/          # Optional: Reference docs, SOPs
+├── workspace/        # Optional: Where files go
+└── .env.example      # If credentials needed
+```
 
 ### AGENT.md
 
@@ -119,82 +123,54 @@ Save files to `workspace/`:
 
 1. Read `context/guide.md`
 2. Run tool
-3. Save output to `workspace/`
+3. Save to `workspace/`
 
 ## Environment
-
-Required:
 
     export API_KEY=your_key
 ```
 
-### Folder Structure
+### Context
 
-```
-agent-name/
-├── AGENT.md              # Required
-├── tools/                # Required
-├── context/              # Optional: reference docs
-├── workspace/            # Agent's working directory
-└── .env.example          # If credentials needed
-```
+Reference material the agent reads before doing work:
 
-### That's It
+- Style guides
+- SOPs
+- Templates
+- Examples
 
-No frontmatter. No config files. No schemas.
+The agent reads these. It doesn't modify them.
 
-Just markdown and scripts.
+### Workspace
+
+Where the agent saves files:
+
+- Downloads
+- Generated content
+- Research notes
+- Project files
+
+This is the agent's working state. Persistent across sessions.
+
+### Workflows
+
+Step-by-step procedures. What context to read, what tools to run, where to save output.
+
+Without workflows, agents skip steps. With workflows, procedures are repeatable.
 
 ---
 
-## Compatible Harnesses
+## Compatible Agents
 
 Any terminal agent that can read files and run commands:
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [OpenCode](https://opencode.ai)
 - [Goose](https://github.com/block/goose)
+- [OpenCode](https://opencode.ai)
 - [Codex CLI](https://github.com/openai/codex)
 - [Aider](https://aider.chat)
-- [Claude](https://claude.ai) with computer use
 
-The harness handles conversation, tool execution, and reasoning.
-
-The Micro Agent provides context, tools, and workspace.
-
----
-
-## Context vs Tools vs Workspace
-
-| Directory | Purpose | Agent Access |
-|-----------|---------|--------------|
-| `tools/` | Scripts that do things | Execute |
-| `context/` | SOPs, guides, templates | Read |
-| `workspace/` | Files the agent creates | Read/Write |
-
-**Context** is reference material. The agent reads it before doing work.
-
-**Tools** are capabilities. The agent executes them to take action.
-
-**Workspace** is the agent's desk. Downloads, drafts, output go here.
-
----
-
-## Workflows
-
-Workflows are step-by-step procedures. They tell the agent what context to read, what tools to use, and where to save output.
-
-```markdown
-## Workflows
-
-### Write a Script
-
-1. Read `context/script-guide.md`
-2. Read `context/examples/`
-3. Write to `workspace/projects/<name>/script.md`
-```
-
-Without workflows, agents skip steps. With workflows, procedures are repeatable.
+Or paste into any chat interface. The files are the agent.
 
 ---
 
@@ -203,7 +179,7 @@ Without workflows, agents skip steps. With workflows, procedures are repeatable.
 ```markdown
 # YouTube Agent
 
-You are a YouTube research agent. You help analyze channels, find content patterns, and write video scripts.
+You are a YouTube research agent. You help analyze channels, find content patterns, and write scripts.
 
 You can use the following tools:
 
@@ -211,13 +187,13 @@ You can use the following tools:
 
 ### search_videos
 
-Search YouTube for videos.
+Search YouTube.
 
     uv run tools/youtube.py search_videos "QUERY" --max 25 --json
 
 ### get_channel_videos
 
-Get videos from a channel with outlier analysis.
+Get channel videos with outlier analysis.
 
     uv run tools/youtube.py get_channel_videos @HANDLE --days 30 --json
 
@@ -229,25 +205,24 @@ Get video transcript.
 
 ## Workspace
 
-Save files to `workspace/`:
-
 - `workspace/projects/` — Video projects
-- `workspace/research/` — Analysis and notes
-- `workspace/transcripts/` — Downloaded transcripts
+- `workspace/research/` — Analysis
+- `workspace/transcripts/` — Transcripts
 
 ## Workflows
 
 ### Research a Topic
 
 1. Search with `search_videos`
-2. Get transcripts of top performers
-3. Save findings to `workspace/research/`
+2. Analyze channels with `get_channel_videos`
+3. Get transcripts of outliers
+4. Save to `workspace/research/`
 
 ### Write a Script
 
 1. Read `context/script-guide.md`
-2. Read `context/title-guide.md`
-3. Write to `workspace/projects/<name>/script.md`
+2. Create `workspace/projects/<n>/`
+3. Write script.md
 
 ## Environment
 
@@ -256,44 +231,17 @@ Save files to `workspace/`:
 
 ---
 
-## Distribution
-
-Share as a git repo:
-
-```bash
-git clone https://github.com/user/youtube-agent
-cd youtube-agent
-cp .env.example .env
-# Add credentials, start working
-```
-
-Agents are portable. Same folder works with any compatible harness.
-
----
-
-## Relationship to AGENTS.md
-
-[AGENTS.md](https://agents.md) is the standard for giving coding agents instructions. Micro Agents follow the same format.
-
-**AGENTS.md**: Instructions for working in a codebase.
-
-**Micro Agent**: A complete workspace with tools, context, and workflows.
-
-A Micro Agent is what you get when AGENTS.md becomes a standalone operational environment.
-
----
-
 ## Summary
 
 The agent harness is general-purpose.
 
-The value is in the scripts (what it can do) and context (how it does it).
+The value is in the files:
 
-A Micro Agent is just a folder with:
+- **AGENT.md** — Identity and instructions
+- **tools/** — Scripts that do things
+- **context/** — Knowledge to read
+- **workspace/** — State that persists
 
-- `AGENT.md` — Identity and instructions
-- `tools/` — Scripts that do things
-- `context/` — Reference material
-- `workspace/` — Where files go
+Docs are the source of truth. Files don't drift. Debug in English. Pick up where you left off.
 
-Point a terminal agent at it. Start working.
+That's it.
